@@ -1,49 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>MIMA Panel Login</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-
-<h2>Login</h2>
-
-<input id="username" placeholder="Username"><br><br>
-<input id="password" type="password" placeholder="Password"><br><br>
-
-<button onclick="login()">Login</button>
-
-<script>
-const SUPABASE_URL = "https://zubkwzsnpdjtndlvqfqf.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Ymt3enNucGRqdG5kbHZxZnFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDgyMjMsImV4cCI6MjA5MDcyNDIyM30.6fcSUpeuBONYGsWCG9lmOaf0lOPq9CDt2Ud9jXsvbSo";
-
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-async function login() {
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
-
-  const { data, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("username", username)
-    .eq("password", password)
-    .single();
-
-  if (error || !data) {
-    alert("Invalid login");
-    return;
-  }
-
-  sessionStorage.setItem("user", JSON.stringify(data));
-
-  if (data.role === "admin") {
-    window.location.href = "admin/dashboard.html";
-  } else {
-    window.location.href = "user/dashboard.html";
-  }
-}
-</script>
-
+    <h1>Supabase Connection Test</h1>
+    <div id="result">Testing...</div>
+    
+    <script>
+    const SUPABASE_URL = 'https://zubkwzsnpdjtndlvqfqf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Ymt3enNucGRqdG5kbHZxZnFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDgyMjMsImV4cCI6MjA5MDcyNDIyM30.6fcSUpeuBONYGsWCG9lmOaf0lOPq9CDt2Ud9jXsvbSo';
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    async function test() {
+        const { data, error } = await supabase.from('users').select('count');
+        if (error) {
+            document.getElementById('result').innerHTML = '❌ NOT CONNECTED: ' + error.message;
+        } else {
+            document.getElementById('result').innerHTML = '✅ CONNECTED! Users found: ' + JSON.stringify(data);
+        }
+    }
+    test();
+    </script>
 </body>
 </html>
