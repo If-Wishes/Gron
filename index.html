@@ -1,16 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MIMA Panel Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body>
+
+<h2>Login</h2>
+
+<input id="username" placeholder="Username"><br><br>
+<input id="password" type="password" placeholder="Password"><br><br>
+
+<button onclick="login()">Login</button>
+
 <script>
+const SUPABASE_URL = "YOUR_SUPABASE_URL";
+const SUPABASE_KEY = "YOUR_ANON_KEY";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 async function login() {
   const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("users")
     .select("*")
     .eq("username", username)
     .eq("password", password)
     .single();
 
-  if (!data) {
+  if (error || !data) {
     alert("Invalid login");
     return;
   }
@@ -18,9 +38,12 @@ async function login() {
   sessionStorage.setItem("user", JSON.stringify(data));
 
   if (data.role === "admin") {
-    window.location.href = "/admin/dashboard.html";
+    window.location.href = "admin/dashboard.html";
   } else {
-    window.location.href = "/user/dashboard.html";
+    window.location.href = "user/dashboard.html";
   }
 }
 </script>
+
+</body>
+</html>
