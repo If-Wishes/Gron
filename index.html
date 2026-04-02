@@ -1,27 +1,233 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIMA Panel | Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .hidden-panel { display: none; }
+        .loading { display: none; text-align: center; padding: 10px; }
+        .loading.active { display: block; }
+    </style>
 </head>
-<body>
-    <h1>Supabase Connection Test</h1>
-    <div id="result">Testing...</div>
-    
-    <script>
-    const SUPABASE_URL = 'https://zubkwzsnpdjtndlvqfqf.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Ymt3enNucGRqdG5kbHZxZnFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDgyMjMsImV4cCI6MjA5MDcyNDIyM30.6fcSUpeuBONYGsWCG9lmOaf0lOPq9CDt2Ud9jXsvbSo';
-    
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    async function test() {
-        const { data, error } = await supabase.from('users').select('count');
-        if (error) {
-            document.getElementById('result').innerHTML = '❌ NOT CONNECTED: ' + error.message;
-        } else {
-            document.getElementById('result').innerHTML = '✅ CONNECTED! Users found: ' + JSON.stringify(data);
+<body class="bg-gray-50">
+
+<!-- ============ LOGIN PAGE ============ -->
+<div id="loginPage" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-600 to-purple-600">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+        <div class="text-center mb-8">
+            <div class="h-14 w-14 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <i class="fas fa-chart-line text-white text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">MIMA<span class="text-indigo-600">Panel</span></h1>
+            <p class="text-gray-500 text-sm mt-1">Admin Login</p>
+        </div>
+
+        <div class="loading" id="loginLoading"><i class="fas fa-spinner fa-spin"></i> Logging in...</div>
+        <form id="loginForm">
+            <div class="mb-4"><input type="text" id="username" placeholder="Username" class="w-full border rounded-xl px-4 py-3"></div>
+            <div class="mb-6"><input type="password" id="password" placeholder="Password" class="w-full border rounded-xl px-4 py-3"></div>
+            <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700">Login as Admin</button>
+        </form>
+
+        <div id="loginMessage" class="mt-4 text-center text-sm text-red-600 hidden"></div>
+        <div class="mt-6 pt-4 border-t text-center text-xs text-gray-400">
+            Admin: admin / admin123
+        </div>
+    </div>
+</div>
+
+<!-- ============ DASHBOARD PAGE ============ -->
+<div id="dashboardPage" class="hidden-panel">
+    <nav class="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-sm"></i>
+                    </div>
+                    <span class="ml-2 text-xl font-bold text-gray-800">MIMA<span class="text-indigo-600">Panel</span></span>
+                    <span class="ml-3 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Admin</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-sm font-medium text-gray-800" id="adminName">Admin</p>
+                        <p class="text-xs text-gray-500">Dashboard</p>
+                    </div>
+                    <button id="logoutBtn" class="text-gray-500 hover:text-red-600">
+                        <i class="fas fa-sign-out-alt text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-8">
+            <h1 class="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p class="text-gray-500 mt-1">Welcome to MIMA Panel Admin</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-lg p-6">
+                <p class="text-indigo-100 text-sm">Total Users</p>
+                <p class="text-white text-3xl font-bold mt-1" id="statUsers">0</p>
+            </div>
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6">
+                <p class="text-emerald-100 text-sm">Total Numbers</p>
+                <p class="text-white text-3xl font-bold mt-1" id="statNumbers">0</p>
+            </div>
+            <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-lg p-6">
+                <p class="text-amber-100 text-sm">OTPs Today</p>
+                <p class="text-white text-3xl font-bold mt-1" id="statOtps">0</p>
+            </div>
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6">
+                <p class="text-purple-100 text-sm">Earnings Today</p>
+                <p class="text-white text-3xl font-bold mt-1" id="statEarnings">$0</p>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl shadow-sm border p-6">
+                <i class="fas fa-users text-2xl text-indigo-500"></i>
+                <h3 class="font-semibold mt-2">User Management</h3>
+                <p class="text-sm text-gray-500">Create and manage users</p>
+                <p class="text-xs text-gray-400 mt-2">Coming soon</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border p-6">
+                <i class="fas fa-phone-alt text-2xl text-emerald-500"></i>
+                <h3 class="font-semibold mt-2">Number Allocation</h3>
+                <p class="text-sm text-gray-500">Assign numbers to users</p>
+                <p class="text-xs text-gray-400 mt-2">Coming soon</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border p-6">
+                <i class="fas fa-chart-line text-2xl text-purple-500"></i>
+                <h3 class="font-semibold mt-2">User Activities</h3>
+                <p class="text-sm text-gray-500">View all user activity</p>
+                <p class="text-xs text-gray-400 mt-2">Coming soon</p>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+// Supabase Configuration
+const SUPABASE_URL = 'https://zubkwzsnpdjtndlvqfqf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Ymt3enNucGRqdG5kbHZxZnFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDgyMjMsImV4cCI6MjA5MDcyNDIyM30.6fcSUpeuBONYGsWCG9lmOaf0lOPq9CDt2Ud9jXsvbSo';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Check for existing session
+const session = localStorage.getItem('mima_session');
+if (session) {
+    try {
+        const s = JSON.parse(session);
+        if (s.role === 'admin') {
+            showDashboard();
         }
+    } catch(e) {}
+}
+
+// Login function
+async function login(username, password) {
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, username, email, role')
+            .eq('username', username)
+            .eq('password', password)
+            .single();
+        
+        if (data) {
+            if (data.role !== 'admin') {
+                return { success: false, message: 'This account is not an admin' };
+            }
+            localStorage.setItem('mima_session', JSON.stringify({
+                userId: data.id,
+                username: data.username,
+                email: data.email,
+                role: data.role
+            }));
+            return { success: true };
+        }
+        return { success: false, message: 'Invalid credentials' };
+    } catch (error) {
+        return { success: false, message: 'Login failed' };
     }
-    test();
-    </script>
+}
+
+// Show dashboard and hide login
+function showDashboard() {
+    document.getElementById('loginPage').classList.add('hidden-panel');
+    document.getElementById('dashboardPage').classList.remove('hidden-panel');
+    loadStats();
+}
+
+// Show login and hide dashboard
+function showLogin() {
+    document.getElementById('loginPage').classList.remove('hidden-panel');
+    document.getElementById('dashboardPage').classList.add('hidden-panel');
+}
+
+// Load dashboard stats
+async function loadStats() {
+    try {
+        const { data: users } = await supabase.from('users').select('id');
+        document.getElementById('statUsers').textContent = users?.length || 0;
+        
+        const session = JSON.parse(localStorage.getItem('mima_session'));
+        if (session) {
+            document.getElementById('adminName').innerText = session.username;
+        }
+    } catch(e) {
+        console.log('Error loading stats:', e);
+    }
+}
+
+// Logout
+function logout() {
+    localStorage.removeItem('mima_session');
+    showLogin();
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+}
+
+// Login form handler
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const loading = document.getElementById('loginLoading');
+    const form = document.getElementById('loginForm');
+    const messageDiv = document.getElementById('loginMessage');
+    
+    loading.classList.add('active');
+    form.style.opacity = '0.5';
+    messageDiv.classList.add('hidden');
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const result = await login(username, password);
+    
+    loading.classList.remove('active');
+    form.style.opacity = '1';
+    
+    if (result.success) {
+        showDashboard();
+    } else {
+        messageDiv.textContent = result.message;
+        messageDiv.classList.remove('hidden');
+    }
+});
+
+// Logout button handler
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    logout();
+});
+</script>
 </body>
 </html>
