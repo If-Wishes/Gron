@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body>
+
+<h2>Admin Dashboard</h2>
+
+<button onclick="logout()">Logout</button>
+
+<h3>All Users</h3>
+
+<ul id="userList"></ul>
+
+<script type="module">
+import { getUsers } from "../js/supabase.js";
+
+const user = JSON.parse(sessionStorage.getItem("user"));
+
+if (!user || user.role !== "admin") {
+  window.location.href = "../index.html";
+}
+
+async function loadUsers() {
+  const { data } = await getUsers();
+
+  const list = document.getElementById("userList");
+
+  list.innerHTML = data.map(u => `
+    <li>${u.username} (${u.role})</li>
+  `).join("");
+}
+
+loadUsers();
+
+window.logout = function () {
+  sessionStorage.clear();
+  window.location.href = "../index.html";
+}
+</script>
+
+</body>
+</html>
