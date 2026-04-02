@@ -1,7 +1,7 @@
 const SUPABASE_URL = "YOUR_SUPABASE_URL";
 const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
 
-const supabase = window.supabase.createClient(
+export const supabase = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
@@ -21,10 +21,10 @@ export async function deleteUser(id) {
 
 // NUMBERS
 export async function addNumbers(userId, numbers, country) {
-  const formatted = numbers.map(num => ({
+  const formatted = numbers.map(n => ({
     user_id: userId,
-    number: num,
-    last3: num.slice(-3),
+    number: n,
+    last3: n.slice(-3),
     country
   }));
 
@@ -41,6 +41,8 @@ export async function getUserNumbers(userId) {
 // OTP MATCHING
 export async function getOtpsForUser(userId) {
   const { data: numbers } = await getUserNumbers(userId);
+
+  if (!numbers || numbers.length === 0) return { data: [] };
 
   const last3List = numbers.map(n => n.last3);
 
