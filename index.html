@@ -3,39 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MIMA Panel | Login</title>
+    <title>MIMA Panel | Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+<body>
 
-<div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
-    <div class="text-center mb-8">
-        <h1 class="text-2xl font-bold">MIMA Panel</h1>
-        <p class="text-gray-500">Admin Login</p>
+<!-- LOGIN SECTION -->
+<div id="loginSection" class="min-h-screen flex items-center justify-center p-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+        <div class="text-center mb-8">
+            <div class="h-14 w-14 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-chart-line text-white text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">MIMA<span class="text-indigo-600">Panel</span></h1>
+            <p class="text-gray-500 text-sm mt-1">Admin Login</p>
+        </div>
+
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="Username" class="w-full border rounded-xl px-4 py-3 mb-4">
+            <input type="password" id="password" placeholder="Password" class="w-full border rounded-xl px-4 py-3 mb-6">
+            <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700">Login</button>
+        </form>
+
+        <div id="loginError" class="mt-4 text-center text-sm text-red-600 hidden"></div>
+        <div class="mt-6 pt-4 border-t text-center text-xs text-gray-400">
+            Admin: admin / admin123
+        </div>
     </div>
+</div>
 
-    <form id="loginForm">
-        <input type="text" id="username" placeholder="Username" class="w-full border rounded-xl px-4 py-3 mb-4">
-        <input type="password" id="password" placeholder="Password" class="w-full border rounded-xl px-4 py-3 mb-6">
-        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl">Login</button>
-    </form>
+<!-- DASHBOARD SECTION (Hidden initially) -->
+<div id="dashboardSection" style="display:none;">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center">
+                <div class="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                    <i class="fas fa-chart-line text-white text-sm"></i>
+                </div>
+                <span class="ml-2 text-xl font-bold">MIMA<span class="text-indigo-600">Panel</span></span>
+                <span class="ml-3 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Admin</span>
+            </div>
+            <button id="logoutBtn" class="text-gray-500 hover:text-red-600">
+                <i class="fas fa-sign-out-alt text-lg"></i>
+            </button>
+        </div>
+    </nav>
 
-    <div id="message" class="mt-4 text-center text-sm hidden"></div>
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <h1 class="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p class="text-gray-500 mb-6">Welcome, <span id="adminName">Admin</span>!</p>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6">
+                <p class="text-indigo-100">Total Users</p>
+                <p class="text-white text-3xl font-bold" id="statUsers">0</p>
+            </div>
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6">
+                <p class="text-emerald-100">Total Numbers</p>
+                <p class="text-white text-3xl font-bold" id="statNumbers">0</p>
+            </div>
+            <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-6">
+                <p class="text-amber-100">OTPs Today</p>
+                <p class="text-white text-3xl font-bold" id="statOtps">0</p>
+            </div>
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6">
+                <p class="text-purple-100">Earnings Today</p>
+                <p class="text-white text-3xl font-bold" id="statEarnings">$0</p>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl border p-6">
+                <i class="fas fa-users text-2xl text-indigo-500"></i>
+                <h3 class="font-semibold mt-2">User Management</h3>
+                <p class="text-sm text-gray-500">Coming soon</p>
+            </div>
+            <div class="bg-white rounded-2xl border p-6">
+                <i class="fas fa-phone-alt text-2xl text-emerald-500"></i>
+                <h3 class="font-semibold mt-2">Number Allocation</h3>
+                <p class="text-sm text-gray-500">Coming soon</p>
+            </div>
+            <div class="bg-white rounded-2xl border p-6">
+                <i class="fas fa-chart-line text-2xl text-purple-500"></i>
+                <h3 class="font-semibold mt-2">User Activities</h3>
+                <p class="text-sm text-gray-500">Coming soon</p>
+            </div>
+        </div>
+    </main>
 </div>
 
 <script>
+// Supabase
 const SUPABASE_URL = 'https://zubkwzsnpdjtndlvqfqf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Ymt3enNucGRqdG5kbHZxZnFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDgyMjMsImV4cCI6MjA5MDcyNDIyM30.6fcSUpeuBONYGsWCG9lmOaf0lOPq9CDt2Ud9jXsvbSo';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const messageDiv = document.getElementById('message');
-    
+// Check if already logged in
+const savedSession = localStorage.getItem('mima_session');
+if (savedSession) {
+    try {
+        const session = JSON.parse(savedSession);
+        if (session.role === 'admin') {
+            showDashboard(session.username);
+        }
+    } catch(e) {}
+}
+
+// Login function
+async function doLogin(username, password) {
     const { data, error } = await supabase
         .from('users')
         .select('id, username, role')
@@ -43,18 +124,62 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         .eq('password', password)
         .single();
     
-    if (data) {
-        messageDiv.innerHTML = '✅ Login successful! Redirecting...';
-        messageDiv.className = 'mt-4 text-center text-sm text-green-600';
-        messageDiv.classList.remove('hidden');
-        setTimeout(() => {
-            window.location.href = 'dashboard.html';
-        }, 1000);
-    } else {
-        messageDiv.innerHTML = '❌ Invalid username or password';
-        messageDiv.className = 'mt-4 text-center text-sm text-red-600';
-        messageDiv.classList.remove('hidden');
+    if (data && data.role === 'admin') {
+        localStorage.setItem('mima_session', JSON.stringify({
+            userId: data.id,
+            username: data.username,
+            role: data.role
+        }));
+        return { success: true, username: data.username };
     }
+    return { success: false };
+}
+
+// Show dashboard
+function showDashboard(username) {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('dashboardSection').style.display = 'block';
+    document.getElementById('adminName').innerText = username;
+    loadStats();
+}
+
+// Show login
+function showLogin() {
+    document.getElementById('loginSection').style.display = 'flex';
+    document.getElementById('dashboardSection').style.display = 'none';
+}
+
+// Load stats
+async function loadStats() {
+    const { data: users } = await supabase.from('users').select('id');
+    document.getElementById('statUsers').textContent = users?.length || 0;
+}
+
+// Handle login form
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('loginError');
+    
+    const result = await doLogin(username, password);
+    
+    if (result.success) {
+        showDashboard(result.username);
+    } else {
+        errorDiv.textContent = 'Invalid username or password';
+        errorDiv.classList.remove('hidden');
+    }
+});
+
+// Logout
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('mima_session');
+    showLogin();
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('loginError').classList.add('hidden');
 });
 </script>
 </body>
