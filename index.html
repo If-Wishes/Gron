@@ -28,7 +28,6 @@
         </form>
 
         <div id="loginError" class="mt-4 text-center text-sm text-red-600 hidden"></div>
-        <div id="debugInfo" class="mt-4 text-xs text-gray-500 bg-gray-100 p-2 rounded hidden"></div>
         <div class="mt-6 pt-4 border-t text-center text-xs text-gray-400">
             Try: admin1 / pass123
         </div>
@@ -56,25 +55,6 @@
         <h1 class="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
         <p class="text-gray-500 mb-6">Welcome, <span id="adminName">Admin</span>!</p>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6">
-                <p class="text-indigo-100">Total Users</p>
-                <p class="text-white text-3xl font-bold" id="statUsers">0</p>
-            </div>
-            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6">
-                <p class="text-emerald-100">Total Numbers</p>
-                <p class="text-white text-3xl font-bold" id="statNumbers">0</p>
-            </div>
-            <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-6">
-                <p class="text-amber-100">OTPs Today</p>
-                <p class="text-white text-3xl font-bold" id="statOtps">0</p>
-            </div>
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6">
-                <p class="text-purple-100">Earnings Today</p>
-                <p class="text-white text-3xl font-bold" id="statEarnings">$0</p>
-            </div>
-        </div>
-
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-white rounded-2xl border p-6">
                 <i class="fas fa-users text-2xl text-indigo-500"></i>
@@ -100,74 +80,44 @@ const SUPABASE_URL = 'https://zubkwzsnpdjtndlvqfqf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Ymt3enNucGRqdG5kbHZxZnFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDgyMjMsImV4cCI6MjA5MDcyNDIyM30.6fcSUpeuBONYGsWCG9lmOaf0lOPq9CDt2Ud9jXsvbSo';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const debugDiv = document.getElementById('debugInfo');
-
-function logDebug(msg) {
-    debugDiv.classList.remove('hidden');
-    debugDiv.innerHTML += new Date().toLocaleTimeString() + ': ' + msg + '<br>';
-    console.log(msg);
-}
-
-// Check if already logged in
+// Check saved session
 const savedSession = localStorage.getItem('mima_session');
 if (savedSession) {
     try {
         const session = JSON.parse(savedSession);
         if (session.role === 'admin') {
-            logDebug('Found saved session for: ' + session.username);
             showDashboard(session.username);
         }
-    } catch(e) {
-        logDebug('Error parsing session: ' + e.message);
-    }
+    } catch(e) {}
 }
 
+// Login function - using the same logic that works in Termux
 async function doLogin(username, password) {
-    logDebug('Attempting login for: ' + username);
+    const { data, error } = await supabase
+        .from('users')
+        .select('username, role')
+        .eq('username', username)
+        .eq('password', password);
     
-    try {
-        const { data, error } = await supabase
-            .from('users')
-            .select('id, username, role')
-            .eq('username', username)
-            .eq('password', password);
-        
-        logDebug('Query result: ' + JSON.stringify(data));
-        
-        if (error) {
-            logDebug('Error: ' + error.message);
-            return { success: false };
-        }
-        
-        if (data && data.length > 0) {
-            const user = data[0];
-            if (user.role === 'admin') {
-                localStorage.setItem('mima_session', JSON.stringify({
-                    userId: user.id,
-                    username: user.username,
-                    role: user.role
-                }));
-                logDebug('Login successful for: ' + user.username);
-                return { success: true, username: user.username };
-            } else {
-                logDebug('User exists but role is: ' + user.role + ' (not admin)');
-            }
-        } else {
-            logDebug('No user found with those credentials');
-        }
-        return { success: false };
-    } catch(err) {
-        logDebug('Exception: ' + err.message);
+    if (error) {
+        console.log('Error:', error);
         return { success: false };
     }
+    
+    if (data && data.length > 0 && data[0].role === 'admin') {
+        localStorage.setItem('mima_session', JSON.stringify({
+            username: data[0].username,
+            role: data[0].role
+        }));
+        return { success: true, username: data[0].username };
+    }
+    return { success: false };
 }
 
 function showDashboard(username) {
-    logDebug('Showing dashboard for: ' + username);
     document.getElementById('loginSection').style.display = 'none';
     document.getElementById('dashboardSection').style.display = 'block';
     document.getElementById('adminName').innerText = username;
-    loadStats();
 }
 
 function showLogin() {
@@ -175,21 +125,13 @@ function showLogin() {
     document.getElementById('dashboardSection').style.display = 'none';
 }
 
-async function loadStats() {
-    const { data: users } = await supabase.from('users').select('id');
-    document.getElementById('statUsers').textContent = users?.length || 0;
-}
-
+// Handle login
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     const errorDiv = document.getElementById('loginError');
-    
-    errorDiv.classList.add('hidden');
-    debugDiv.innerHTML = '';
-    debugDiv.classList.remove('hidden');
     
     const result = await doLogin(username, password);
     
@@ -201,13 +143,13 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     }
 });
 
+// Logout
 document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.removeItem('mima_session');
     showLogin();
     document.getElementById('username').value = '';
     document.getElementById('password').value = '';
     document.getElementById('loginError').classList.add('hidden');
-    debugDiv.classList.add('hidden');
 });
 </script>
 </body>
