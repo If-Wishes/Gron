@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: mima-panel
+    env: static
+    buildCommand: ""
+    staticPublishPath: .
+
+  - type: worker
+    name: telegram-bot
+    env: python
+    buildCommand: "pip install -r bot/requirements.txt"
+    startCommand: "python bot/telegram_bot.py"
