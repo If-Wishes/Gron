@@ -2,7 +2,6 @@ services:
   - type: web
     name: mima-panel
     env: static
-    buildCommand: ""
     staticPublishPath: .
 
   - type: worker
