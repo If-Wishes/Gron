@@ -3,157 +3,398 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MIMA Panel | Admin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>Sliding CAPTCHA</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #f0f0f0;
+        }
+        
+        .captcha-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 350px;
+        }
+        
+        .puzzle-container {
+            position: relative;
+            background: #f5f5f5;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            cursor: pointer;
+        }
+        
+        #backgroundCanvas {
+            background: #e0e0e0;
+        }
+        
+        .slider-container {
+            margin-top: 20px;
+            position: relative;
+            background: #e8e8e8;
+            border-radius: 25px;
+            height: 40px;
+        }
+        
+        #sliderTrack {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            border-radius: 25px;
+            opacity: 0;
+            transition: width 0.05s linear;
+        }
+        
+        #sliderThumb {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            cursor: grab;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: left 0.05s linear;
+        }
+        
+        #sliderThumb:active {
+            cursor: grabbing;
+        }
+        
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        button {
+            margin-top: 15px;
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        .reset-btn {
+            background: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .reset-btn:hover {
+            background: #545b62;
+        }
+        
+        .loading {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+    </style>
 </head>
 <body>
-
-<!-- LOGIN SECTION -->
-<div id="loginSection" class="min-h-screen flex items-center justify-center p-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
-        <div class="text-center mb-8">
-            <div class="h-14 w-14 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-chart-line text-white text-2xl"></i>
-            </div>
-            <h1 class="text-2xl font-bold text-gray-800">MIMA<span class="text-indigo-600">Panel</span></h1>
-            <p class="text-gray-500 text-sm mt-1">Admin Login</p>
+    <div class="captcha-container">
+        <h3>Slide to verify</h3>
+        <div class="puzzle-container">
+            <canvas id="backgroundCanvas" width="350" height="200"></canvas>
+            <canvas id="pieceCanvas" style="position: absolute; top: 0; left: 0;"></canvas>
         </div>
-
-        <form id="loginForm">
-            <input type="text" id="username" placeholder="Username" class="w-full border rounded-xl px-4 py-3 mb-4">
-            <input type="password" id="password" placeholder="Password" class="w-full border rounded-xl px-4 py-3 mb-6">
-            <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700">Login</button>
-        </form>
-
-        <div id="loginError" class="mt-4 text-center text-sm text-red-600 hidden"></div>
-        <div class="mt-6 pt-4 border-t text-center text-xs text-gray-400">
-            Try: 
+        
+        <div class="slider-container">
+            <div id="sliderTrack"></div>
+            <div id="sliderThumb">→</div>
         </div>
+        
+        <div id="message" class="message"></div>
+        <button id="submitBtn" disabled>Verify</button>
+        <button id="resetBtn" class="reset-btn">Reset CAPTCHA</button>
     </div>
-</div>
 
-<!-- DASHBOARD SECTION -->
-<div id="dashboardSection" style="display:none;">
-    <nav class="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center">
-                <div class="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-                    <i class="fas fa-chart-line text-white text-sm"></i>
-                </div>
-                <span class="ml-2 text-xl font-bold">MIMA<span class="text-indigo-600">Panel</span></span>
-                <span class="ml-3 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Admin</span>
-            </div>
-            <button id="logoutBtn" class="text-gray-500 hover:text-red-600">
-                <i class="fas fa-sign-out-alt text-lg"></i>
-            </button>
-        </div>
-    </nav>
-
-    <main class="max-w-7xl mx-auto px-4 py-8">
-        <h1 class="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p class="text-gray-500 mb-6">Welcome, <span id="adminName">Admin</span>!</p>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-white rounded-2xl border p-6">
-                <i class="fas fa-users text-2xl text-indigo-500"></i>
-                <h3 class="font-semibold mt-2">User Management</h3>
-                <p class="text-sm text-gray-500">Coming soon</p>
-            </div>
-            <div class="bg-white rounded-2xl border p-6">
-                <i class="fas fa-phone-alt text-2xl text-emerald-500"></i>
-                <h3 class="font-semibold mt-2">Number Allocation</h3>
-                <p class="text-sm text-gray-500">Coming soon</p>
-            </div>
-            <div class="bg-white rounded-2xl border p-6">
-                <i class="fas fa-chart-line text-2xl text-purple-500"></i>
-                <h3 class="font-semibold mt-2">User Activities</h3>
-                <p class="text-sm text-gray-500">Coming soon</p>
-            </div>
-        </div>
-    </main>
-</div>
-
-<script>
-// Supabase credentials - same as Termux test
-const SUPABASE_URL = 'https://zubkwzsnpdjtndlvqfqf.supabase.co';
-const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Ymt3enNucGRqdG5kbHZxZnFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDgyMjMsImV4cCI6MjA5MDcyNDIyM30.6fcSUpeuBONYGsWCG9lmOaf0lOPq9CDt2Ud9jXsvbSo';
-
-// Check saved session
-const savedSession = localStorage.getItem('mima_session');
-if (savedSession) {
-    try {
-        const session = JSON.parse(savedSession);
-        if (session.role === 'admin') {
-            showDashboard(session.username);
+    <script>
+        // Configuration
+        const GAP_WIDTH = 40;
+        const GAP_HEIGHT = 40;
+        const TOLERANCE = 8; // pixels
+        
+        // DOM elements
+        const bgCanvas = document.getElementById('backgroundCanvas');
+        const pieceCanvas = document.getElementById('pieceCanvas');
+        const sliderThumb = document.getElementById('sliderThumb');
+        const sliderTrack = document.getElementById('sliderTrack');
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const messageDiv = document.getElementById('message');
+        
+        // State
+        let isDragging = false;
+        let startX = 0;
+        let currentX = 0;
+        let maxLeft = 0;
+        let targetGapX = 0;
+        let currentPieceX = 0;
+        let slideStartTime = 0;
+        let trajectory = [];
+        let captchaToken = '';
+        let backgroundImage = null;
+        
+        // Generate random CAPTCHA
+        async function generateCaptcha() {
+            try {
+                const response = await fetch('/api/captcha/generate', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    captchaToken = data.token;
+                    targetGapX = data.gapX;
+                    loadImage(data.imageUrl);
+                } else {
+                    showMessage('Failed to load CAPTCHA', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Network error', 'error');
+            }
         }
-    } catch(e) {}
-}
-
-// Login function - EXACT same as Termux test
-async function doLogin(username, password) {
-    const url = `${SUPABASE_URL}/rest/v1/users?select=username,role&username=eq.${username}&password=eq.${password}`;
-    
-    try {
-        const response = await fetch(url, {
-            headers: { 'apikey': API_KEY }
+        
+        function loadImage(url) {
+            const img = new Image();
+            img.onload = () => {
+                backgroundImage = img;
+                drawPuzzle();
+            };
+            img.src = url;
+        }
+        
+        function drawPuzzle() {
+            if (!backgroundImage) return;
+            
+            // Draw background
+            const bgCtx = bgCanvas.getContext('2d');
+            bgCtx.drawImage(backgroundImage, 0, 0, bgCanvas.width, bgCanvas.height);
+            
+            // Draw gap (hole)
+            bgCtx.globalCompositeOperation = 'destination-out';
+            bgCtx.fillStyle = 'rgba(0,0,0,1)';
+            bgCtx.fillRect(targetGapX, bgCanvas.height/2 - GAP_HEIGHT/2, GAP_WIDTH, GAP_HEIGHT);
+            bgCtx.globalCompositeOperation = 'source-over';
+            
+            // Draw piece
+            const pieceCtx = pieceCanvas.getContext('2d');
+            pieceCanvas.width = bgCanvas.width;
+            pieceCanvas.height = bgCanvas.height;
+            pieceCtx.clearRect(0, 0, pieceCanvas.width, pieceCanvas.height);
+            
+            // Extract piece from original image
+            pieceCtx.drawImage(backgroundImage, 
+                targetGapX, bgCanvas.height/2 - GAP_HEIGHT/2, GAP_WIDTH, GAP_HEIGHT,
+                currentPieceX, bgCanvas.height/2 - GAP_HEIGHT/2, GAP_WIDTH, GAP_HEIGHT);
+            
+            // Add border to piece
+            pieceCtx.strokeStyle = '#fff';
+            pieceCtx.lineWidth = 2;
+            pieceCtx.strokeRect(currentPieceX, bgCanvas.height/2 - GAP_HEIGHT/2, GAP_WIDTH, GAP_HEIGHT);
+        }
+        
+        // Slider logic
+        function initSlider() {
+            const container = document.querySelector('.slider-container');
+            maxLeft = container.clientWidth - sliderThumb.offsetWidth;
+            
+            sliderThumb.addEventListener('mousedown', startDrag);
+            sliderThumb.addEventListener('touchstart', startDrag);
+            
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+            document.addEventListener('touchmove', onDrag);
+            document.addEventListener('touchend', stopDrag);
+        }
+        
+        function startDrag(e) {
+            e.preventDefault();
+            isDragging = true;
+            startX = (e.clientX || e.touches[0].clientX) - currentX;
+            slideStartTime = Date.now();
+            trajectory = [];
+            submitBtn.disabled = true;
+            messageDiv.className = 'message';
+            messageDiv.textContent = '';
+        }
+        
+        function onDrag(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            let clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            let newX = clientX - startX;
+            newX = Math.max(0, Math.min(newX, maxLeft));
+            
+            if (newX !== currentX) {
+                currentX = newX;
+                sliderThumb.style.left = currentX + 'px';
+                sliderTrack.style.width = (currentX / maxLeft * 100) + '%';
+                sliderTrack.style.opacity = '0.3';
+                
+                // Update piece position
+                currentPieceX = (currentX / maxLeft) * (bgCanvas.width - GAP_WIDTH);
+                drawPuzzle();
+                
+                // Record trajectory
+                trajectory.push({
+                    x: currentX,
+                    time: Date.now() - slideStartTime
+                });
+            }
+        }
+        
+        function stopDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            const slideTime = Date.now() - slideStartTime;
+            const finalPosition = currentX;
+            const targetPosition = (targetGapX / (bgCanvas.width - GAP_WIDTH)) * maxLeft;
+            const distance = Math.abs(finalPosition - targetPosition);
+            
+            // Auto-snap if close enough
+            if (distance <= TOLERANCE && slideTime > 300) {
+                // Success
+                sliderThumb.style.left = targetPosition + 'px';
+                sliderTrack.style.width = (targetPosition / maxLeft * 100) + '%';
+                currentPieceX = targetGapX;
+                drawPuzzle();
+                submitBtn.disabled = false;
+                showMessage('✓ Slide successful! Click verify', 'success');
+                
+                // Send trajectory to backend for verification
+                verifyTrajectory(finalPosition, slideTime);
+            } else if (slideTime < 300) {
+                showMessage('Too fast! Please slide slower', 'error');
+                resetSlider();
+            } else {
+                showMessage('Position incorrect. Try again', 'error');
+                resetSlider();
+            }
+        }
+        
+        async function verifyTrajectory(finalX, slideTime) {
+            const trajectoryData = {
+                token: captchaToken,
+                finalPosition: (finalX / maxLeft) * (bgCanvas.width - GAP_WIDTH),
+                expectedPosition: targetGapX,
+                slideTime: slideTime,
+                trajectory: trajectory
+            };
+            
+            try {
+                const response = await fetch('/api/captcha/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(trajectoryData)
+                });
+                const result = await response.json();
+                
+                if (result.valid) {
+                    showMessage('✓ CAPTCHA verified!', 'success');
+                } else {
+                    showMessage('Verification failed: ' + result.reason, 'error');
+                    resetSlider();
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+            }
+        }
+        
+        function resetSlider() {
+            currentX = 0;
+            currentPieceX = 0;
+            sliderThumb.style.left = '0px';
+            sliderTrack.style.width = '0%';
+            sliderTrack.style.opacity = '0';
+            submitBtn.disabled = true;
+            drawPuzzle();
+            trajectory = [];
+        }
+        
+        function showMessage(msg, type) {
+            messageDiv.textContent = msg;
+            messageDiv.className = `message ${type}`;
+        }
+        
+        // Submit verification
+        submitBtn.addEventListener('click', async () => {
+            submitBtn.disabled = true;
+            try {
+                const response = await fetch('/api/captcha/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: captchaToken })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('✓ Form submitted successfully!', 'success');
+                    setTimeout(() => generateCaptcha(), 1500);
+                } else {
+                    showMessage('Verification failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Error submitting form', 'error');
+            }
+            resetSlider();
         });
         
-        const data = await response.json();
+        resetBtn.addEventListener('click', () => {
+            generateCaptcha();
+            resetSlider();
+        });
         
-        if (data && data.length > 0 && data[0].role === 'admin') {
-            localStorage.setItem('mima_session', JSON.stringify({
-                username: data[0].username,
-                role: data[0].role
-            }));
-            return { success: true, username: data[0].username };
-        }
-        return { success: false };
-    } catch (error) {
-        console.log('Login error:', error);
-        return { success: false };
-    }
-}
-
-function showDashboard(username) {
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('dashboardSection').style.display = 'block';
-    document.getElementById('adminName').innerText = username;
-}
-
-function showLogin() {
-    document.getElementById('loginSection').style.display = 'flex';
-    document.getElementById('dashboardSection').style.display = 'none';
-}
-
-// Handle login form
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const errorDiv = document.getElementById('loginError');
-    
-    errorDiv.classList.add('hidden');
-    
-    const result = await doLogin(username, password);
-    
-    if (result.success) {
-        showDashboard(result.username);
-    } else {
-        errorDiv.textContent = 'Invalid username or password';
-        errorDiv.classList.remove('hidden');
-    }
-});
-
-// Logout
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('mima_session');
-    showLogin();
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
-    document.getElementById('loginError').classList.add('hidden');
-});
-</script>
+        // Initialize
+        initSlider();
+        generateCaptcha();
+    </script>
 </body>
 </html>
