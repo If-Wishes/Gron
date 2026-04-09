@@ -1,718 +1,564 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Slide to Verify | Advanced Canvas CAPTCHA</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      user-select: none; /* prevent accidental text selection while sliding */
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-      background: linear-gradient(145deg, #1a2a3a 0%, #0f1a24 100%);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 0;
-      padding: 20px;
-    }
-
-    /* main card */
-    .captcha-card {
-      max-width: 480px;
-      width: 100%;
-      background: rgba(255,255,255,0.98);
-      border-radius: 2rem;
-      box-shadow: 0 25px 45px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.2);
-      overflow: hidden;
-      backdrop-filter: blur(0px);
-      transition: transform 0.2s ease;
-    }
-
-    .captcha-card:hover {
-      transform: scale(1.01);
-    }
-
-    /* header */
-    .card-header {
-      background: #1e2f3f;
-      padding: 1.2rem 1.5rem;
-      color: white;
-    }
-    .card-header h3 {
-      margin: 0;
-      font-weight: 600;
-      font-size: 1.5rem;
-      letter-spacing: -0.3px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .card-header p {
-      margin: 6px 0 0;
-      font-size: 0.8rem;
-      opacity: 0.8;
-    }
-
-    /* content */
-    .captcha-content {
-      padding: 1.8rem 1.5rem 1.8rem 1.5rem;
-    }
-
-    /* PUZZLE ARENA */
-    .puzzle-arena {
-      position: relative;
-      background: #eef2f5;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: inset 0 1px 4px rgba(0,0,0,0.05), 0 6px 12px rgba(0,0,0,0.1);
-      margin-bottom: 1.6rem;
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      height: auto;
-      cursor: grab;
-    }
-    canvas:active {
-      cursor: grabbing;
-    }
-    #pieceCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      pointer-events: none;  /* piece follows slider, no direct interaction */
-    }
-
-    /* SLIDER UI */
-    .slider-wrapper {
-      margin-top: 10px;
-      position: relative;
-    }
-    .slider-track-bg {
-      background: #e2e8f0;
-      border-radius: 60px;
-      height: 56px;
-      position: relative;
-      box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
-      cursor: pointer;
-    }
-    .slider-fill {
-      position: absolute;
-      left: 0;
-      top: 0;
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #2ecc71, #27ae60);
-      border-radius: 60px;
-      transition: width 0.02s linear;
-      pointer-events: none;
-      box-shadow: inset 0 1px 2px rgba(255,255,255,0.4);
-    }
-    .slider-thumb {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 56px;
-      height: 56px;
-      background: white;
-      border-radius: 50%;
-      cursor: grab;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 26px;
-      transition: left 0.02s linear;
-      z-index: 10;
-      color: #2c3e50;
-      font-weight: bold;
-      user-select: none;
-    }
-    .slider-thumb:active {
-      cursor: grabbing;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      transform: scale(0.98);
-    }
-    .drag-label {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: #4a5568;
-      pointer-events: none;
-      white-space: nowrap;
-      background: rgba(255,255,240,0.7);
-      padding: 4px 12px;
-      border-radius: 40px;
-      backdrop-filter: blur(2px);
-    }
-
-    /* message & buttons */
-    .status-area {
-      margin: 24px 0 18px;
-      text-align: center;
-    }
-    .message-box {
-      padding: 12px;
-      border-radius: 60px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      background: #f1f5f9;
-      color: #1e293b;
-      transition: all 0.2s;
-    }
-    .message-box.success {
-      background: #d1fae5;
-      color: #065f46;
-      border-left: 4px solid #10b981;
-    }
-    .message-box.error {
-      background: #fee2e2;
-      color: #991b1b;
-      border-left: 4px solid #ef4444;
-    }
-    .button-group {
-      display: flex;
-      gap: 12px;
-      margin-top: 8px;
-    }
-    .btn {
-      flex: 1;
-      padding: 12px 8px;
-      font-weight: 600;
-      border: none;
-      border-radius: 60px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: 0.2s;
-      background: #eef2ff;
-      color: #1f3a6b;
-    }
-    .btn-primary {
-      background: #1e2f3f;
-      color: white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    .btn-primary:enabled {
-      background: #2c3e66;
-    }
-    .btn-primary:enabled:hover {
-      background: #0f2b3b;
-      transform: translateY(-2px);
-    }
-    .btn-primary:disabled {
-      background: #b9c3cf;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-    .btn-secondary {
-      background: #e9ecef;
-      border: 1px solid #ced4da;
-    }
-    .btn-secondary:hover {
-      background: #dee2e6;
-      transform: translateY(-1px);
-    }
-    .footer-note {
-      margin-top: 18px;
-      font-size: 0.7rem;
-      text-align: center;
-      color: #6c757d;
-      border-top: 1px solid #e9ecef;
-      padding-top: 14px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>ELITE Notes | Note Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-purple {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            transition: all 0.2s;
+        }
+        .btn-purple:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
+        }
+        
+        .btn-red {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            transition: all 0.2s;
+        }
+        .btn-red:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .tab-active {
+            background: rgba(124, 58, 237, 0.2);
+            color: #7c3aed;
+            border-bottom: 3px solid #7c3aed;
+        }
+        
+        .note-item {
+            transition: all 0.2s ease;
+            border-left: 3px solid #7c3aed;
+        }
+        .note-item:hover {
+            transform: translateX(5px);
+            background-color: #f5f3ff;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #e9d5ff;
+            border-radius: 50%;
+            border-top-color: #7c3aed;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #7c3aed; border-radius: 10px; }
+        
+        textarea {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .copy-btn {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .copy-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .search-box {
+            transition: all 0.2s;
+        }
+        .search-box:focus {
+            border-color: #7c3aed;
+            ring: 2px solid #7c3aed;
+        }
+        
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+    </style>
 </head>
 <body>
 
-<div class="captcha-card">
-  <div class="card-header">
-    <h3>🔐 Sliding Puzzle CAPTCHA</h3>
-    <p>drag the piece → align with the missing gap</p>
-  </div>
-  <div class="captcha-content">
-    <!-- canvas puzzle area -->
-    <div class="puzzle-arena">
-      <canvas id="bgCanvas" width="400" height="220" style="width:100%; height:auto; background:#d9e2ec"></canvas>
-      <canvas id="pieceCanvas" width="400" height="220" style="width:100%; height:auto"></canvas>
+<div class="min-h-screen p-4">
+    <div class="max-w-5xl mx-auto">
+        
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+                <i class="fas fa-sticky-note text-white text-2xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-white">DECENTRALIX<span class="text-purple-200"> number</span></h1>
+            <p class="text-purple-100 text-sm mt-1">Manage your notes with ease</p>
+        </div>
+        
+        <!-- Tab Navigation -->
+        <div class="flex gap-2 mb-6">
+            <button id="addTabBtn" class="flex-1 glass-card text-center py-3 font-semibold text-gray-600 transition tab-active">
+                <i class="fas fa-plus-circle mr-2"></i> Add Note
+            </button>
+            <button id="viewTabBtn" class="flex-1 glass-card text-center py-3 font-semibold text-gray-600 transition">
+                <i class="fas fa-list mr-2"></i> View Notes
+            </button>
+        </div>
+        
+        <!-- Add Note Tab -->
+        <div id="addTab" class="tab-content">
+            <div class="glass-card p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <i class="fas fa-pen text-purple-500"></i>
+                    Create New Note
+                </h2>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">📝 Title                     *</label>
+                    <input type="text" id="noteTitle" placeholder="Enter note title..." 
+                           class="w-full border border-purple-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:ring-2 focus:ring-purple-500 outline-none">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">📄 Content</label>
+                    <textarea id="noteContent" rows="8" placeholder="Write your note here..." 
+                              class="w-full border border-purple-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:ring-2 focus:ring-purple-500 outline-none"></textarea>
+                </div>
+                
+                <div class="mb-4">
+<label class="block text-sm font-semibold text-gray-700 mb-2">🏷️ Category (optional)</label>
+                    <input type="text" id="noteCategory" placeholder="e.g., Work, Personal, Ideas..." 
+                           class="w-full border border-purple-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:ring-2 focus:ring-purple-500 outline-none">                    
+                </div>
+                
+                <button id="saveNoteBtn" class="btn-purple w-full text-white py-3 rounded-xl font-semibold shadow-md">
+                    <i class="fas fa-save mr-2"></i>Save Note
+                </button>
+            </div>
+        </div>
+        
+        <!-- View Notes Tab -->
+        <div id="viewTab" class="tab-content" style="display: none;">
+            <div class="glass-card p-6">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-list text-purple-500"></i>
+                        My Notes
+                        <span id="totalCount" class="text-sm bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">0</span>
+                    </h2>
+                    <div class="flex gap-2">
+                        <input type="text" id="searchNotes" placeholder="🔍 Search notes..." 
+                               class="search-box px-3 py-2 border border-purple-200 rounded-xl bg-gray-50 focus:outline-none text-sm w-40 md:w-60">
+                        <button id="clearAllBtn" class="btn-red text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-md">
+                            <i class="fas fa-trash-alt mr-1"></i> Clear All
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Filter by category -->
+                <div class="mb-4">
+                    <select id="categoryFilter" class="w-full border border-purple-200 rounded-xl px-4 py-2 bg-gray-50 focus:ring-2 focus:ring-purple-500 outline-none">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+                
+                <!-- Notes List -->
+                <div id="notesList" class="space-y-3 max-h-[500px] overflow-y-auto">
+                    <div class="text-center py-8 text-gray-400">
+                        <div class="loading-spinner"></div>
+                        <p class="mt-2">Loading notes...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center text-purple-200 text-xs mt-6">
+            <i class="fas fa-lock mr-1"></i> Secure Storage | Notes are stored in the cloud
+        </div>
     </div>
-
-    <!-- sliding mechanism -->
-    <div class="slider-wrapper">
-      <div class="slider-track-bg" id="sliderTrackBg">
-        <div class="slider-fill" id="sliderFill"></div>
-        <div class="slider-thumb" id="sliderThumb">↔️</div>
-        <div class="drag-label" id="dragLabel">⸻  slide to match the shape  ⸻</div>
-      </div>
-    </div>
-
-    <div class="status-area">
-      <div class="message-box" id="statusMsg">✨ Slide the puzzle piece into the gap</div>
-    </div>
-
-    <div class="button-group">
-      <button class="btn btn-primary" id="verifyBtn" disabled>✔️ VERIFY</button>
-      <button class="btn btn-secondary" id="resetCaptchaBtn">🔄 New Puzzle</button>
-    </div>
-    <div class="footer-note">
-      ⚡ Human verification: trajectory & position check
-    </div>
-  </div>
 </div>
 
 <script>
-  (function(){
-    // ---------- CONFIGURATION ----------
-    const PUZZLE_SIZE = 48;        // width & height of cutout
-    const TOLERANCE_PX = 9;        // allowed pixel offset from exact gap
-    const MIN_SLIDE_MS = 320;
-    const MAX_SLIDE_MS = 6000;
+// Supabase Configuration
+const SUPABASE_URL = 'https://uizrpckqnproauqllono.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpenJwY2txbnByb2F1cWxsb25vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNDc0NjQsImV4cCI6MjA5MDYyMzQ2NH0.qKVaCbH2NiksMuh85guJiRySQxykwSx-MkbWNuE-PdE';
 
-    // canvas dimensions (fixed for logic)
-    const CANVAS_W = 400;
-    const CANVAS_H = 220;
-    const GAP_Y = (CANVAS_H / 2) - (PUZZLE_SIZE / 2);  // vertically centered
+let allNotes = [];
+let currentTab = 'add';
 
-    // DOM elements
-    const bgCanvas = document.getElementById('bgCanvas');
-    const pieceCanvas = document.getElementById('pieceCanvas');
-    const sliderThumb = document.getElementById('sliderThumb');
-    const sliderFill = document.getElementById('sliderFill');
-    const trackBg = document.getElementById('sliderTrackBg');
-    const verifyBtn = document.getElementById('verifyBtn');
-    const resetBtn = document.getElementById('resetCaptchaBtn');
-    const statusDiv = document.getElementById('statusMsg');
+// Show toast notification
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white px-4 py-2 rounded-lg shadow-lg text-sm`;
+    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
 
-    // set canvas dimensions properly
-    bgCanvas.width = CANVAS_W;
-    bgCanvas.height = CANVAS_H;
-    pieceCanvas.width = CANVAS_W;
-    pieceCanvas.height = CANVAS_H;
+// Tab switching
+document.getElementById('addTabBtn').addEventListener('click', () => {
+    currentTab = 'add';
+    document.getElementById('addTab').style.display = 'block';
+    document.getElementById('viewTab').style.display = 'none';
+    document.getElementById('addTabBtn').classList.add('tab-active');
+    document.getElementById('viewTabBtn').classList.remove('tab-active');
+});
 
-    // ---------- GLOBAL STATE ----------
-    let currentBackgroundImage = null;   // stores the original full image (offscreen canvas)
-    let targetGapX = 0;                  // correct X coordinate of the hole (px)
-    let currentPieceX = 0;              // current drawn X of the puzzle piece
-    let sliderMaxLeft = 0;              // max left offset for slider (in px)
-    let currentSliderX = 0;             // slider thumb left position (0..sliderMaxLeft)
-    let isDragging = false;
-    let dragStartMouseX = 0;
-    let slideStartTimestamp = 0;
-    let isVerified = false;
-    let verificationPassed = false;      // internal flag to block re-verify
-    let trajectoryPoints = [];            // store {x, timestamp} for basic bot detection
+document.getElementById('viewTabBtn').addEventListener('click', () => {
+    currentTab = 'view';
+    document.getElementById('addTab').style.display = 'none';
+    document.getElementById('viewTab').style.display = 'block';
+    document.getElementById('viewTabBtn').classList.add('tab-active');
+    document.getElementById('addTabBtn').classList.remove('tab-active');
+    loadNotes();
+});
+
+// Save note to Supabase
+async function saveNote() {
+    const title = document.getElementById('noteTitle').value.trim();
+    const content = document.getElementById('noteContent').value.trim();
+    const category = document.getElementById('noteCategory').value.trim() || 'Uncategorized';
     
-    // ---------- UTILITIES ----------
-    function showMessage(text, isError = false) {
-      statusDiv.innerText = text;
-      statusDiv.className = 'message-box';
-      if (!isError && text.toLowerCase().includes('verified')) {
-        statusDiv.classList.add('success');
-      } else if (!isError && text.toLowerCase().includes('success')) {
-        statusDiv.classList.add('success');
-      } else if (isError) {
-        statusDiv.classList.add('error');
-      } else if (text.includes('✅')) {
-        statusDiv.classList.add('success');
-      } else {
-        statusDiv.classList.remove('success', 'error');
-      }
+    if (!title) {
+        showToast('Please enter a title', 'error');
+        return;
     }
     
-    // generate a vibrant and unique canvas image with shapes & noise
-    function generateRandomArtwork() {
-      const offCanvas = document.createElement('canvas');
-      offCanvas.width = CANVAS_W;
-      offCanvas.height = CANVAS_H;
-      const ctx = offCanvas.getContext('2d');
-      
-      // dynamic gradient background
-      const hue1 = Math.floor(Math.random() * 360);
-      const hue2 = (hue1 + 40 + Math.random() * 100) % 360;
-      const grad = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
-      grad.addColorStop(0, `hsl(${hue1}, 70%, 65%)`);
-      grad.addColorStop(1, `hsl(${hue2}, 75%, 50%)`);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      
-      // draw geometric obstacles (random circles, rects, wavy lines)
-      for (let i = 0; i < 28; i++) {
-        ctx.save();
-        ctx.globalAlpha = 0.5 + Math.random() * 0.4;
-        ctx.fillStyle = `hsl(${Math.random() * 360}, 85%, 65%)`;
-        ctx.beginPath();
-        if (Math.random() > 0.6) {
-          ctx.arc(Math.random() * CANVAS_W, Math.random() * CANVAS_H, 8 + Math.random() * 20, 0, Math.PI * 2);
-          ctx.fill();
+    const noteData = {
+        title: title,
+        content: content || '',
+        category: category,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
+    
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/notes`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(noteData)
+        });
+        
+        if (response.ok) {
+            showToast('✅ Note saved successfully!');
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteContent').value = '';
+            document.getElementById('noteCategory').value = '';
+            if (currentTab === 'view') {
+                loadNotes();
+            }
         } else {
-          ctx.fillRect(Math.random() * CANVAS_W, Math.random() * CANVAS_H, 12 + Math.random() * 28, 12 + Math.random() * 28);
+            showToast('❌ Failed to save note', 'error');
         }
-        ctx.restore();
-      }
-      
-      // draw intersecting lines & noise
-      ctx.beginPath();
-      ctx.strokeStyle = `rgba(255,255,200,0.7)`;
-      ctx.lineWidth = 2.5;
-      for (let s = 0; s < 12; s++) {
-        ctx.beginPath();
-        ctx.moveTo(Math.random() * CANVAS_W, Math.random() * CANVAS_H);
-        ctx.lineTo(Math.random() * CANVAS_W, Math.random() * CANVAS_H);
-        ctx.stroke();
-      }
-      
-      // add random text fragment
-      ctx.font = `bold ${16 + Math.random() * 12}px "Segoe UI"`;
-      ctx.fillStyle = `rgba(30,30,50,0.4)`;
-      ctx.fillText("🔒", 15 + Math.random() * 60, 35 + Math.random() * 50);
-      ctx.fillStyle = `rgba(255,240,200,0.7)`;
-      ctx.fillText("⛌", CANVAS_W - 45, CANVAS_H - 25);
-      
-      // small pixel noise
-      const imgData = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H);
-      const data = imgData.data;
-      for (let i = 0; i < data.length; i += 8) {
-        if (Math.random() > 0.92) {
-          data[i] = Math.min(255, data[i] + 40);
-          data[i+1] = Math.min(255, data[i+1] + 30);
-          data[i+2] = Math.min(255, data[i+2] + 50);
+    } catch (err) {
+        console.error('Error saving note:', err);
+        showToast('Error saving note', 'error');
+    }
+}
+
+// Load notes from Supabase
+async function loadNotes() {
+    const notesList = document.getElementById('notesList');
+    notesList.innerHTML = '<div class="text-center py-8 text-gray-400"><div class="loading-spinner"></div><p class="mt-2">Loading notes...</p></div>';
+    
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/notes?order=created_at.desc&limit=500`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        if (response.ok) {
+            allNotes = await response.json();
+            updateCategoryFilter();
+            displayNotes();
+        } else if (response.status === 404) {
+            notesList.innerHTML = `
+                <div class="text-center py-8 text-gray-400">
+                    <i class="fas fa-database text-4xl mb-3 opacity-40"></i>
+                    <p>No notes table found. Please create a "notes" table in Supabase with:</p>
+                    <pre class="text-left mt-3 text-xs bg-gray-100 p-3 rounded overflow-x-auto">
+CREATE TABLE notes (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT,
+    category TEXT DEFAULT 'Uncategorized',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);</pre>
+                </div>
+            `;
         }
-      }
-      ctx.putImageData(imgData, 0, 0);
-      return offCanvas;
+    } catch (err) {
+        console.error('Error loading notes:', err);
+        notesList.innerHTML = '<div class="text-center py-8 text-red-400"><i class="fas fa-exclamation-triangle text-4xl mb-3"></i><p>Error loading notes</p></div>';
+    }
+}
+
+// Update category filter dropdown
+function updateCategoryFilter() {
+    const categories = [...new Set(allNotes.map(n => n.category).filter(c => c))];
+    const filterSelect = document.getElementById('categoryFilter');
+    filterSelect.innerHTML = '<option value="all">All Categories</option>';
+    categories.forEach(cat => {
+        filterSelect.innerHTML += `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`;
+    });
+}
+
+// Display notes with search and filter
+function displayNotes() {
+    const searchTerm = document.getElementById('searchNotes').value.toLowerCase();
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    
+    let filteredNotes = allNotes;
+    
+    // Apply search filter
+    if (searchTerm) {
+        filteredNotes = filteredNotes.filter(n => 
+            n.title.toLowerCase().includes(searchTerm) || 
+            (n.content && n.content.toLowerCase().includes(searchTerm))
+        );
     }
     
-    // draw the main canvas (background with transparent hole)
-    function drawBackgroundWithHole(bgImageCanvas, gapX) {
-      const ctx = bgCanvas.getContext('2d');
-      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-      // draw the full original picture
-      ctx.drawImage(bgImageCanvas, 0, 0, CANVAS_W, CANVAS_H);
-      // create hole using destination-out
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = 'rgba(0,0,0,1)';
-      ctx.fillRect(gapX, GAP_Y, PUZZLE_SIZE, PUZZLE_SIZE);
-      ctx.globalCompositeOperation = 'source-over';
-      
-      // OPTIONAL: add subtle inner shadow hint around hole (just for visibility)
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.save();
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(gapX, GAP_Y, PUZZLE_SIZE, PUZZLE_SIZE);
-      ctx.restore();
+    // Apply category filter
+    if (categoryFilter !== 'all') {
+        filteredNotes = filteredNotes.filter(n => n.category === categoryFilter);
     }
     
-    // draw the movable piece (based on currentPieceX)
-    function drawMovablePiece(originalFullCanvas, gapX, pieceX) {
-      const ctx = pieceCanvas.getContext('2d');
-      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-      if (!originalFullCanvas) return;
-      // extract piece region from original image
-      ctx.drawImage(originalFullCanvas, 
-        gapX, GAP_Y, PUZZLE_SIZE, PUZZLE_SIZE,
-        pieceX, GAP_Y, PUZZLE_SIZE, PUZZLE_SIZE
-      );
-      // add realistic border & shadow
-      ctx.save();
-      ctx.shadowBlur = 4;
-      ctx.shadowColor = "rgba(0,0,0,0.4)";
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(pieceX, GAP_Y, PUZZLE_SIZE, PUZZLE_SIZE);
-      ctx.strokeStyle = "#2c3e50";
-      ctx.lineWidth = 1.2;
-      ctx.strokeRect(pieceX+1, GAP_Y+1, PUZZLE_SIZE-2, PUZZLE_SIZE-2);
-      ctx.restore();
-    }
+    const notesList = document.getElementById('notesList');
+    document.getElementById('totalCount').textContent = filteredNotes.length;
     
-    // refresh entire puzzle UI
-    function refreshPuzzle() {
-      if (!currentBackgroundImage) return;
-      drawBackgroundWithHole(currentBackgroundImage, targetGapX);
-      drawMovablePiece(currentBackgroundImage, targetGapX, currentPieceX);
-    }
-    
-    // reset slider position and state
-    function resetSliderUI() {
-      currentSliderX = 0;
-      sliderThumb.style.left = '0px';
-      sliderFill.style.width = '0%';
-      currentPieceX = 0;
-      refreshPuzzle();
-      isDragging = false;
-      trajectoryPoints = [];
-    }
-    
-    // generate completely new CAPTCHA (image + random gap)
-    function generateNewCaptcha() {
-      // generate new artistic image
-      const freshArt = generateRandomArtwork();
-      currentBackgroundImage = freshArt;
-      // random gap X (avoid edges: keep inside canvas)
-      const minGap = 20;
-      const maxGap = CANVAS_W - PUZZLE_SIZE - 20;
-      targetGapX = Math.floor(Math.random() * (maxGap - minGap + 1) + minGap);
-      
-      // reset verification state
-      isVerified = false;
-      verificationPassed = false;
-      verifyBtn.disabled = true;
-      // reset slider position & piece
-      resetSliderUI();
-      // compute slider max range based on container width (dynamic)
-      updateSliderMaxRange();
-      // re-draw everything
-      refreshPuzzle();
-      showMessage("🔄 New puzzle! Slide the piece to match the gap.", false);
-    }
-    
-    // compute max left offset for slider (depends on parent width)
-    function updateSliderMaxRange() {
-      const trackRect = trackBg.getBoundingClientRect();
-      const thumbWidth = sliderThumb.offsetWidth;
-      sliderMaxLeft = trackRect.width - thumbWidth;
-      if (sliderMaxLeft < 0) sliderMaxLeft = 0;
-      // also clamp currentSliderX
-      if (currentSliderX > sliderMaxLeft) currentSliderX = sliderMaxLeft;
-    }
-    
-    // convert slider X (0..sliderMaxLeft) to piece X (0..CANVAS_W-PUZZLE_SIZE)
-    function sliderXToPieceX(sliderX) {
-      if (sliderMaxLeft <= 0) return 0;
-      const ratio = sliderX / sliderMaxLeft;
-      const maxPieceX = CANVAS_W - PUZZLE_SIZE;
-      return ratio * maxPieceX;
-    }
-    
-    // convert piece X to slider position
-    function pieceXToSliderX(pieceX) {
-      const maxPieceX = CANVAS_W - PUZZLE_SIZE;
-      if (maxPieceX <= 0) return 0;
-      const ratio = Math.min(1, Math.max(0, pieceX / maxPieceX));
-      return ratio * sliderMaxLeft;
-    }
-    
-    // update piece position based on current slider value
-    function syncPieceFromSlider() {
-      currentPieceX = sliderXToPieceX(currentSliderX);
-      refreshPuzzle();
-    }
-    
-    // record trajectory point for bot detection (time + x)
-    function addTrajectoryPoint() {
-      if (!isDragging) return;
-      const now = Date.now();
-      trajectoryPoints.push({
-        x: currentSliderX,
-        timestamp: now - slideStartTimestamp
-      });
-      // limit stored points to 150
-      if (trajectoryPoints.length > 150) trajectoryPoints.shift();
-    }
-    
-    // advanced human-like detection based on trajectory
-    function isHumanLikeTrajectory(points, slideDuration) {
-      if (points.length < 5) return false;  // too few points = suspicious
-      let speedChanges = 0;
-      let prevSpeed = null;
-      for (let i = 1; i < points.length; i++) {
-        const dx = points[i].x - points[i-1].x;
-        const dt = points[i].timestamp - points[i-1].timestamp;
-        if (dt < 5) continue;
-        const speed = Math.abs(dx) / dt;
-        if (prevSpeed !== null && Math.abs(speed - prevSpeed) < 0.02) {
-          speedChanges++;  // too linear segment?
-        }
-        prevSpeed = speed;
-      }
-      // if more than 70% of steps are perfectly linear → bot
-      const linearRatio = speedChanges / (points.length-1);
-      // Also check for abrupt teleportation (step > 35px in one frame)
-      let teleportCount = 0;
-      for (let i = 1; i < points.length; i++) {
-        if (Math.abs(points[i].x - points[i-1].x) > 32) teleportCount++;
-      }
-      // humans have micro variations
-      const isTooLinear = linearRatio > 0.68;
-      const hasTeleports = teleportCount > 2;
-      const isVeryShort = slideDuration < 280;
-      return (!isTooLinear && !hasTeleports && !isVeryShort);
-    }
-    
-    // final verification (position + trajectory + timing)
-    function attemptVerification() {
-      if (isVerified || verificationPassed) {
-        showMessage("Already verified! Press reset for new challenge.", false);
-        return false;
-      }
-      
-      const expectedPieceX = targetGapX;
-      const currentPiecePos = currentPieceX;
-      const distanceError = Math.abs(currentPiecePos - expectedPieceX);
-      const slideDuration = (Date.now() - slideStartTimestamp);
-      // but if never dragged, slideStartTimestamp may be old, we handle reset
-      let finalDuration = slideDuration;
-      if (trajectoryPoints.length === 0) finalDuration = 9999;
-      
-      // basic constraints
-      const posOk = distanceError <= TOLERANCE_PX;
-      const timeOk = (finalDuration >= MIN_SLIDE_MS && finalDuration <= MAX_SLIDE_MS);
-      
-      // advanced trajectory check (if points exist)
-      let trajectoryOk = false;
-      if (trajectoryPoints.length > 3 && finalDuration > 150) {
-        trajectoryOk = isHumanLikeTrajectory(trajectoryPoints, finalDuration);
-      } else {
-        // if no drag happened (fresh reset) fail
-        trajectoryOk = false;
-      }
-      
-      if (posOk && timeOk && trajectoryOk) {
-        // SUCCESS
-        isVerified = true;
-        verificationPassed = true;
-        verifyBtn.disabled = false;   // user can click verify
-        showMessage("✅ Perfect match! Click VERIFY to complete.", false);
-        return true;
-      } else {
-        let errMsg = "";
-        if (!posOk) errMsg = `Position off by ${Math.round(distanceError)}px. `;
-        if (!timeOk) errMsg += `Slide speed ${finalDuration}ms (need ${MIN_SLIDE_MS}-${MAX_SLIDE_MS}ms). `;
-        if (!trajectoryOk && trajectoryPoints.length>2) errMsg += `Irregular movement pattern. `;
-        if (trajectoryPoints.length < 4) errMsg += `Smooth sliding required. `;
-        showMessage(`❌ Verification failed: ${errMsg}Try again`, true);
-        // auto reset slider to give another chance but preserve same puzzle
-        resetSliderUI();
-        // reset start time and clear trajectory for next attempt
-        slideStartTimestamp = Date.now();
-        trajectoryPoints = [];
-        verifyBtn.disabled = true;
-        isVerified = false;
-        return false;
-      }
-    }
-    
-    // ---------- DRAG HANDLERS ----------
-    function onDragStart(e) {
-      if (verificationPassed) {
-        showMessage("Already verified! Press 'New Puzzle' to continue", false);
+    if (filteredNotes.length === 0) {
+        notesList.innerHTML = `
+            <div class="text-center py-8 text-gray-400">
+                <i class="fas fa-inbox text-4xl mb-3 opacity-40"></i>
+                <p>No notes found</p>
+                <p class="text-xs mt-1">Create a note in the "Add Note" tab</p>
+            </div>
+        `;
         return;
-      }
-      e.preventDefault();
-      isDragging = true;
-      const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0);
-      dragStartMouseX = clientX - currentSliderX;
-      slideStartTimestamp = Date.now();
-      trajectoryPoints = [];
-      // initial point
-      trajectoryPoints.push({ x: currentSliderX, timestamp: 0 });
-      showMessage("⏺ Slide to the correct gap...", false);
     }
     
-    function onDragMove(e) {
-      if (!isDragging || verificationPassed) return;
-      e.preventDefault();
-      let clientX = e.clientX;
-      if (clientX === undefined && e.touches) clientX = e.touches[0].clientX;
-      if (clientX === undefined) return;
-      let newSliderX = clientX - dragStartMouseX;
-      newSliderX = Math.min(Math.max(0, newSliderX), sliderMaxLeft);
-      if (Math.abs(newSliderX - currentSliderX) > 0.2) {
-        currentSliderX = newSliderX;
-        sliderThumb.style.left = currentSliderX + 'px';
-        const fillPercent = (currentSliderX / sliderMaxLeft) * 100;
-        sliderFill.style.width = fillPercent + '%';
-        // update piece position
-        currentPieceX = sliderXToPieceX(currentSliderX);
-        refreshPuzzle();
-        addTrajectoryPoint();
-      }
+    let html = '';
+    for (const note of filteredNotes) {
+        const createdDate = new Date(note.created_at).toLocaleDateString();
+        const createdTime = new Date(note.created_at).toLocaleTimeString();
+        const shortContent = note.content ? (note.content.length > 100 ? note.content.substring(0, 100) + '...' : note.content) : '';
+        
+        html += `
+            <div class="note-item bg-white rounded-xl p-4 shadow-sm border border-purple-100">
+                <div class="flex justify-between items-start mb-2 flex-wrap gap-2">
+                    <h3 class="font-bold text-gray-800 text-lg">${escapeHtml(note.title)}</h3>
+                    <div class="flex gap-2">
+                        <button onclick="editNote(${note.id})" class="text-blue-500 hover:text-blue-700 p-1 rounded-lg hover:bg-blue-50 transition" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteNote(${note.id})" class="text-red-500 hover:text-red-700 p-1 rounded-lg hover:bg-red-50 transition" title="Delete">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                ${note.category && note.category !== 'Uncategorized' ? `<div class="mb-2"><span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">${escapeHtml(note.category)}</span></div>` : ''}
+                ${shortContent ? `<pre class="text-sm text-gray-600 whitespace-pre-wrap">${escapeHtml(shortContent)}</pre>` : '<p class="text-sm text-gray-400 italic">No content</p>'}
+                <div class="mt-3 text-xs text-gray-400">
+                    <i class="far fa-calendar-alt mr-1"></i> ${createdDate} at ${createdTime}
+                </div>
+            </div>
+        `;
     }
     
-    function onDragEnd(e) {
-      if (!isDragging) return;
-      isDragging = false;
-      if (verificationPassed) return;
-      // add final point
-      addTrajectoryPoint();
-      // now evaluate attempt
-      attemptVerification();
-      // if failed, slider remains at position? we want reset slider UI only if verification failed (already reset inside attempt)
-      // but to keep consistent: if verification failed, slider & piece were reset inside attemptVerification.
-      // re-sync after potential reset inside attempt
-      if (!verificationPassed) {
-        // ensure UI reflects reset state
-        currentSliderX = 0;
-        sliderThumb.style.left = '0px';
-        sliderFill.style.width = '0%';
-        currentPieceX = 0;
-        refreshPuzzle();
-      }
+    notesList.innerHTML = html;
+}
+
+// Edit note
+function editNote(noteId) {
+    const note = allNotes.find(n => n.id === noteId);
+    if (note) {
+        // Switch to add tab
+        document.getElementById('addTabBtn').click();
+        
+        // Fill form with note data
+        document.getElementById('noteTitle').value = note.title;
+        document.getElementById('noteContent').value = note.content || '';
+        document.getElementById('noteCategory').value = note.category || '';
+        
+        // Change save button to update mode
+        const saveBtn = document.getElementById('saveNoteBtn');
+        saveBtn.innerHTML = '<i class="fas fa-edit mr-2"></i>Update Note';
+        saveBtn.onclick = () => updateNote(noteId);
+        
+        showToast('Edit mode: Update your note');
     }
+}
+
+// Update existing note
+async function updateNote(noteId) {
+    const title = document.getElementById('noteTitle').value.trim();
+    const content = document.getElementById('noteContent').value.trim();
+    const category = document.getElementById('noteCategory').value.trim() || 'Uncategorized';
     
-    function handleWindowResize() {
-      updateSliderMaxRange();
-      const newSliderX = pieceXToSliderX(currentPieceX);
-      currentSliderX = Math.min(sliderMaxLeft, Math.max(0, newSliderX));
-      sliderThumb.style.left = currentSliderX + 'px';
-      sliderFill.style.width = (currentSliderX / sliderMaxLeft) * 100 + '%';
-      refreshPuzzle();
-    }
-    
-    // ---------- VERIFY BUTTON ACTION ----------
-    function onVerifyClick() {
-      if (!verificationPassed) {
-        showMessage("Please slide the piece accurately first!", true);
+    if (!title) {
+        showToast('Please enter a title', 'error');
         return;
-      }
-      if (isVerified && verificationPassed) {
-        showMessage("🎉 CAPTCHA VERIFIED! Access granted. (demo protected)", false);
-        verifyBtn.disabled = true;  // disable after final verification
-        // add small flourish
-        statusDiv.innerHTML = "✅✅ VERIFICATION SUCCESSFUL ✅✅<br> human confirmed";
-        statusDiv.classList.add('success');
-      } else {
-        showMessage("Complete the sliding puzzle correctly before verify.", true);
-      }
     }
     
-    // full reset (new random image)
-    function onReset() {
-      generateNewCaptcha();
-      verificationPassed = false;
-      isVerified = false;
-      verifyBtn.disabled = true;
-      trajectoryPoints = [];
-      showMessage("🔄 New CAPTCHA generated. Slide to verify.", false);
+    const updateData = {
+        title: title,
+        content: content || '',
+        category: category,
+        updated_at: new Date().toISOString()
+    };
+    
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/notes?id=eq.${noteId}`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+        
+        if (response.ok) {
+            showToast('✅ Note updated successfully!');
+            // Reset form
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteContent').value = '';
+            document.getElementById('noteCategory').value = '';
+            
+            // Reset save button
+            const saveBtn = document.getElementById('saveNoteBtn');
+            saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Note';
+            saveBtn.onclick = saveNote;
+            
+            if (currentTab === 'view') {
+                loadNotes();
+            }
+        } else {
+            showToast('❌ Failed to update note', 'error');
+        }
+    } catch (err) {
+        console.error('Error updating note:', err);
+        showToast('Error updating note', 'error');
+    }
+}
+
+// Delete single note
+async function deleteNote(id) {
+    if (!confirm('Are you sure you want to delete this note?')) return;
+    
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/notes?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        if (response.ok) {
+            showToast('Note deleted successfully');
+            loadNotes();
+        } else {
+            showToast('Failed to delete note', 'error');
+        }
+    } catch (err) {
+        console.error('Error deleting note:', err);
+        showToast('Error deleting note', 'error');
+    }
+}
+
+// Clear all notes
+async function clearAllNotes() {
+    if (!confirm('⚠️ WARNING: This will delete ALL notes! This action cannot be undone. Are you sure?')) return;
+    
+    const userInput = prompt('Type "DELETE" to confirm deletion of all notes:');
+    if (userInput !== 'DELETE') {
+        showToast('Cancelled', 'error');
+        return;
     }
     
-    // ---------- EVENT LISTENERS ----------
-    sliderThumb.addEventListener('mousedown', onDragStart);
-    sliderThumb.addEventListener('touchstart', onDragStart, {passive: false});
-    window.addEventListener('mousemove', onDragMove);
-    window.addEventListener('mouseup', onDragEnd);
-    window.addEventListener('touchmove', onDragMove, {passive: false});
-    window.addEventListener('touchend', onDragEnd);
-    window.addEventListener('resize', () => { setTimeout(handleWindowResize, 30); });
-    verifyBtn.addEventListener('click', onVerifyClick);
-    resetBtn.addEventListener('click', onReset);
-    
-    // initial slider range after layout
-    setTimeout(() => {
-      updateSliderMaxRange();
-      generateNewCaptcha();
-    }, 20);
-  })();
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/notes`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        if (response.ok) {
+            showToast('✅ All notes cleared successfully');
+            loadNotes();
+        } else {
+            showToast('Failed to clear notes', 'error');
+        }
+    } catch (err) {
+        console.error('Error clearing notes:', err);
+        showToast('Error clearing notes', 'error');
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m] || m));
+}
+
+// Event listeners
+document.getElementById('saveNoteBtn').addEventListener('click', saveNote);
+document.getElementById('clearAllBtn').addEventListener('click', clearAllNotes);
+document.getElementById('searchNotes').addEventListener('input', () => displayNotes());
+document.getElementById('categoryFilter').addEventListener('change', () => displayNotes());
+
+// SQL to create notes table (already exists per your table)
+console.log('Using existing notes table with structure: id, title, content, category, created_at, updated_at');
 </script>
 </body>
 </html>
