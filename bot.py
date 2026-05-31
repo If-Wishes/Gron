@@ -3,22 +3,21 @@ from bs4 import BeautifulSoup
 import hashlib
 import threading
 import time
-import logging
 import os
 from flask import Flask, jsonify
 
-# Suppress all logging
-logging.getLogger('werkzeug').setLevel(logging.ERROR)
-logging.getLogger('requests').setLevel(logging.ERROR)
-logging.getLogger('urllib3').setLevel(logging.ERROR)
+# Suppress all console output
+import sys
+sys.stdout = open(os.devnull, 'w')
+sys.stderr = open(os.devnull, 'w')
 
 app = Flask(__name__)
 
-# Configuration from environment variables
-USERNAME = os.environ.get('PORTAL_USERNAME', '3202')
-PASSWORD = os.environ.get('PORTAL_PASSWORD', 'xoxo')
-BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '8956255769:AAFOd4Opa2-v3WFdaVJCERP1U5fjL4LrLKQ')
-CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '-1003909386800')  # Supergroup with -100 prefix
+# Configuration
+USERNAME = "3202"
+PASSWORD = "xoxo"
+BOT_TOKEN = "8956255769:AAFOd4Opa2-v3WFdaVJCERP1U5fjL4LrLKQ"
+CHAT_ID = "-1003909386800"
 
 class SMSPortal:
     def __init__(self, username, password):
@@ -210,7 +209,7 @@ class SMSPortal:
         return unique_messages
     
     def format_telegram_message(self, message, is_old=False):
-        prefix = "📜 OLD MESSAGE" if is_old else "📨 New SMS Received 🏳️"
+        prefix = "📜 LAST MESSAGE" if is_old else "📨 New SMS Received 🏳️"
         return f"""{prefix}
 ━━━━━━━━━━━━━━━━━━━━━━
 🌍 Country: 🏳️ {message['country']}
@@ -224,7 +223,7 @@ class SMSPortal:
 ━━━━━━━━━━━━━━━━━━━━━━
 Panel - Mediatel
 
-<a href="https://t.me/prince_ACTIVE1">👨‍💻 Developer</a>"""
+👨‍💻 Developer: https://t.me/prince_ACTIVE1"""
     
     def send_to_telegram(self, message):
         try:
@@ -232,7 +231,7 @@ Panel - Mediatel
             payload = {
                 'chat_id': CHAT_ID,
                 'text': message,
-                'parse_mode': 'HTML',
+                'parse_mode': None,
                 'disable_web_page_preview': True
             }
             response = requests.post(url, data=payload, timeout=10)
@@ -240,33 +239,29 @@ Panel - Mediatel
         except:
             return False
     
-    def send_old_messages(self, count=5):
+    def send_last_message(self):
         all_messages = self.get_all_messages_from_all_forms()
         if not all_messages:
             return 0
         
-        last_messages = all_messages[:count] if len(all_messages) >= count else all_messages
+        last_message = all_messages[:1]
+        msg = last_message[0]
+        formatted_msg = self.format_telegram_message(msg, is_old=True)
         
-        sent_count = 0
-        for msg in last_messages:
-            formatted_msg = self.format_telegram_message(msg, is_old=True)
-            if self.send_to_telegram(formatted_msg):
-                sent_count += 1
-                self.seen_hashes.add(msg['hash'])
-            time.sleep(0.5)
+        if self.send_to_telegram(formatted_msg):
+            self.seen_hashes.add(msg['hash'])
         
         for msg in all_messages:
             self.seen_hashes.add(msg['hash'])
         
-        return sent_count
+        return 1
     
     def monitor_forever(self):
-        last_hash = None
         all_messages = self.get_all_messages_from_all_forms()
-        if all_messages:
-            last_hash = all_messages[0]['hash']
-            for msg in all_messages:
-                self.seen_hashes.add(msg['hash'])
+        for msg in all_messages:
+            self.seen_hashes.add(msg['hash'])
+        
+        last_hash = all_messages[0]['hash'] if all_messages else None
         
         while self.running:
             try:
@@ -280,25 +275,21 @@ Panel - Mediatel
                                 formatted_msg = self.format_telegram_message(msg, is_old=False)
                                 self.send_to_telegram(formatted_msg)
                         last_hash = current_hash
+                time.sleep(0.5)
             except:
                 pass
 
-# Start monitoring in background
+# Start monitoring
 portal = SMSPortal(USERNAME, PASSWORD)
 if portal.login():
-    portal.send_old_messages(5)
+    portal.send_last_message()
     monitor_thread = threading.Thread(target=portal.monitor_forever)
     monitor_thread.daemon = True
     monitor_thread.start()
 
 @app.route('/')
 def index():
-    return jsonify({
-        'status': 'active',
-        'service': 'SMS Monitor - All Forms',
-        'developer': '@prince_ACTIVE1',
-        'mode': 'zero-delay'
-    })
+    return jsonify({'status': 'active', 'service': 'SMS Monitor'})
 
 @app.route('/health')
 def health():
