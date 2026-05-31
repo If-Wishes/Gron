@@ -17,8 +17,8 @@ app = Flask(__name__)
 # Configuration from environment variables
 USERNAME = os.environ.get('PORTAL_USERNAME', '3202')
 PASSWORD = os.environ.get('PORTAL_PASSWORD', 'xoxo')
-BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '7783590119:AAGScPFVEreH-fvwSQNTuamGlFOGI-VDK7w')
-CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '-1003481016140')
+BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '8956255769:AAFOd4Opa2-v3WFdaVJCERP1U5fjL4LrLKQ')
+CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '-1003909386800')  # Supergroup with -100 prefix
 
 class SMSPortal:
     def __init__(self, username, password):
