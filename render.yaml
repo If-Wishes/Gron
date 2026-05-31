@@ -1,11 +1,18 @@
 services:
   - type: web
-    name: mima-panel
-    env: static
-    staticPublishPath: .
-
-  - type: worker
-    name: telegram-bot
-    env: python
-    buildCommand: "pip install -r bot/requirements.txt"
-    startCommand: "python bot/telegram_bot.py"
+    name: sms-monitor
+    runtime: python
+    repo: https://github.com/YOUR_USERNAME/YOUR_REPO
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --timeout 0 --keep-alive 0
+    envVars:
+      - key: PORTAL_USERNAME
+        value: 9339236
+      - key: PORTAL_PASSWORD
+        value: GENESYS123
+      - key: TELEGRAM_BOT_TOKEN
+        value: 7783590119:AAGScPFVEreH-fvwSQNTuamGlFOGI-VDK7w
+      - key: TELEGRAM_CHAT_ID
+        value: -1003481016140
