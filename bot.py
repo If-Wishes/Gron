@@ -6,6 +6,7 @@ import time
 import re
 import os
 import sys
+import html
 from collections import deque
 from flask import Flask, jsonify
 
@@ -46,10 +47,7 @@ class SMSPortal:
         self.session.headers.update(headers)
         response = self.session.post(login_url, data=login_data)
         
-        if "User name and password needed" not in response.text:
-            return True
-        else:
-            return False
+        return "User name and password needed" not in response.text
     
     def convert_date_to_digits(self, date_str):
         """Convert date from '31-MAY-2026' to '31-05-2026' format"""
@@ -63,6 +61,30 @@ class SMSPortal:
             if month_name in date_str.upper():
                 return date_str.upper().replace(month_name, month_num)
         return date_str
+    
+    def escape_html(self, text):
+        """Escape HTML special characters to prevent parsing errors"""
+        if not text:
+            return text
+        return html.escape(text)
+    
+    def mask_phone_number(self, phone):
+        """Mask phone number - show only first 3 and last 4 digits"""
+        if not phone:
+            return "N/A"
+        
+        # Remove any non-digit characters
+        digits = re.sub(r'\D', '', str(phone))
+        
+        if len(digits) <= 7:
+            return phone
+        
+        # Show first 3 and last 4 digits, mask the rest with *
+        first_3 = digits[:3]
+        last_4 = digits[-4:]
+        masked = '*' * (len(digits) - 7)
+        
+        return f"{first_3}{masked}{last_4}"
     
     def submit_form_and_get_table2(self, form, form_action, form_method, form_data):
         """Submit a single form and extract TABLE 2 messages"""
@@ -105,6 +127,12 @@ class SMSPortal:
                     sender = cells[2].get_text(strip=True)
                     receiver = cells[3].get_text(strip=True)
                     message_body = cells[4].get_text(strip=True)
+                    
+                    # Mask the phone number
+                    receiver = self.mask_phone_number(receiver)
+                    
+                    # Escape HTML characters in message body
+                    message_body = self.escape_html(message_body)
                     
                     country = range_name.split('-')[0].strip() if '-' in range_name else "Unknown"
                     
@@ -215,6 +243,12 @@ class SMSPortal:
                     receiver = cells[3].get_text(strip=True)
                     message_body = cells[4].get_text(strip=True)
                     
+                    # Mask the phone number
+                    receiver = self.mask_phone_number(receiver)
+                    
+                    # Escape HTML characters
+                    message_body = self.escape_html(message_body)
+                    
                     country = range_name.split('-')[0].strip() if '-' in range_name else "Unknown"
                     message_string = f"{date_time}_{receiver}_{message_body}"
                     message_hash = hashlib.md5(message_string.encode()).hexdigest()
@@ -243,7 +277,7 @@ class SMSPortal:
         return unique_messages
     
     def format_telegram_message(self, message):
-        """Format message with blockquote style - no prefix"""
+        """Format message with blockquote style"""
         
         country_name = message['country']
         flag = "🏳️"
@@ -262,15 +296,12 @@ Panel - Mediatel"""
         return formatted
     
     def send_to_telegram(self, bot_token, chat_id, message):
-        """Send message to Telegram with green button and red text"""
+        """Send message to Telegram"""
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         
-        # Green button with red text using HTML styling
-        BUTTON1_TEXT = "Developer"
+        BUTTON1_TEXT = "👨‍💻 Developer"
         BUTTON1_URL = "https://t.me/prince_ACTIVE1"
         
-        # Note: Telegram doesn't support custom button colors directly
-        # But we can use emojis to indicate colors
         reply_markup = {
             "inline_keyboard": [
                 [
