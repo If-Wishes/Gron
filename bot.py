@@ -3,11 +3,13 @@ from bs4 import BeautifulSoup
 import hashlib
 import threading
 import time
+import re
 import os
+import sys
+from collections import deque
 from flask import Flask, jsonify
 
 # Suppress all console output
-import sys
 sys.stdout = open(os.devnull, 'w')
 sys.stderr = open(os.devnull, 'w')
 
@@ -27,22 +29,43 @@ class SMSPortal:
         self.base_url = "https://mysmsportal.com"
         self.seen_hashes = set()
         self.running = True
+        self.message_queue = deque()
         
     def login(self):
-        try:
-            login_url = f"{self.base_url}/index.php?login=1"
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Content-Type': 'application/x-www-form-urlencoded',
-            }
-            login_data = {'user': self.username, 'password': self.password}
-            self.session.headers.update(headers)
-            response = self.session.post(login_url, data=login_data, timeout=30)
-            return "User name and password needed" not in response.text
-        except:
+        """Login to the portal"""
+        login_url = f"{self.base_url}/index.php?login=1"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+        
+        login_data = {'user': self.username, 'password': self.password}
+        
+        self.session.headers.update(headers)
+        response = self.session.post(login_url, data=login_data)
+        
+        if "User name and password needed" not in response.text:
+            return True
+        else:
             return False
     
+    def convert_date_to_digits(self, date_str):
+        """Convert date from '31-MAY-2026' to '31-05-2026' format"""
+        month_map = {
+            'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04',
+            'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08',
+            'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12'
+        }
+        
+        for month_name, month_num in month_map.items():
+            if month_name in date_str.upper():
+                return date_str.upper().replace(month_name, month_num)
+        return date_str
+    
     def submit_form_and_get_table2(self, form, form_action, form_method, form_data):
+        """Submit a single form and extract TABLE 2 messages"""
         try:
             if form_action:
                 if form_action.startswith('/'):
@@ -76,11 +99,15 @@ class SMSPortal:
                 cells = row.find_all('td')
                 if len(cells) >= 5:
                     date_time = cells[0].get_text(strip=True)
+                    date_time = self.convert_date_to_digits(date_time)
+                    
                     range_name = cells[1].get_text(strip=True)
                     sender = cells[2].get_text(strip=True)
                     receiver = cells[3].get_text(strip=True)
                     message_body = cells[4].get_text(strip=True)
+                    
                     country = range_name.split('-')[0].strip() if '-' in range_name else "Unknown"
+                    
                     message_string = f"{date_time}_{receiver}_{message_body}"
                     message_hash = hashlib.md5(message_string.encode()).hexdigest()
                     
@@ -93,11 +120,14 @@ class SMSPortal:
                         'receiver': receiver,
                         'message': message_body
                     })
+            
             return messages
-        except:
+            
+        except Exception as e:
             return []
     
     def get_all_forms_and_submit(self, html_content):
+        """Extract all forms and submit each one to get TABLE 2 messages"""
         if not html_content:
             return []
         
@@ -160,6 +190,7 @@ class SMSPortal:
         return all_messages
     
     def get_all_messages_from_all_forms(self):
+        """Get ALL messages from ALL forms' TABLE 2"""
         summary_url = f"{self.base_url}/index.php?opt=shw_sum"
         response = self.session.get(summary_url, timeout=30)
         
@@ -177,10 +208,13 @@ class SMSPortal:
                 cells = row.find_all('td')
                 if len(cells) >= 5:
                     date_time = cells[0].get_text(strip=True)
+                    date_time = self.convert_date_to_digits(date_time)
+                    
                     range_name = cells[1].get_text(strip=True)
                     sender = cells[2].get_text(strip=True)
                     receiver = cells[3].get_text(strip=True)
                     message_body = cells[4].get_text(strip=True)
+                    
                     country = range_name.split('-')[0].strip() if '-' in range_name else "Unknown"
                     message_string = f"{date_time}_{receiver}_{message_body}"
                     message_hash = hashlib.md5(message_string.encode()).hexdigest()
@@ -208,55 +242,87 @@ class SMSPortal:
         unique_messages.sort(key=lambda x: x['date_time'], reverse=True)
         return unique_messages
     
-    def format_telegram_message(self, message, is_old=False):
-        prefix = "📜 LAST MESSAGE" if is_old else "📨 New SMS Received 🏳️"
-        return f"""{prefix}
-━━━━━━━━━━━━━━━━━━━━━━
-🌍 Country: 🏳️ {message['country']}
-📱 Number: {message['receiver']}
-📌 Sender: ❓ {message['sender']}
-📅 Date/Time: {message['date_time']}
-🌐 Range: {message['range']}
-━━━━━━━━━━━━━━━━━━━━━━
-💬 Message:
-{message['message']}
-━━━━━━━━━━━━━━━━━━━━━━
-Panel - Mediatel
+    def format_telegram_message(self, message):
+        """Format message with blockquote style - no prefix"""
+        
+        country_name = message['country']
+        flag = "🏳️"
+        
+        formatted = f"""<blockquote>⏰ <b>Time:</b> {message['date_time']}</blockquote>
+<blockquote>🌍 <b>Country:</b> {country_name} {flag}</blockquote>
+<blockquote>📌 <b>Sender:</b> ❓ {message['sender']}</blockquote>
+<blockquote>☎️ <b>Number:</b> {message['receiver']}</blockquote>
+<blockquote>🌐 <b>Range:</b> {message['range']}</blockquote>
 
-👨‍💻 Developer: https://t.me/prince_ACTIVE1"""
+<b>💬 Message:</b>
+<blockquote>{message['message']}</blockquote>
+
+Panel - Mediatel"""
+        
+        return formatted
     
-    def send_to_telegram(self, message):
+    def send_to_telegram(self, bot_token, chat_id, message):
+        """Send message to Telegram with green button and red text"""
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        
+        # Green button with red text using HTML styling
+        BUTTON1_TEXT = "Developer"
+        BUTTON1_URL = "https://t.me/prince_ACTIVE1"
+        
+        # Note: Telegram doesn't support custom button colors directly
+        # But we can use emojis to indicate colors
+        reply_markup = {
+            "inline_keyboard": [
+                [
+                    {"text": BUTTON1_TEXT, "url": BUTTON1_URL}
+                ]
+            ]
+        }
+        
+        payload = {
+            'chat_id': chat_id,
+            'text': message,
+            'parse_mode': 'HTML',
+            'disable_web_page_preview': True,
+            'reply_markup': reply_markup
+        }
+        
         try:
-            url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-            payload = {
-                'chat_id': CHAT_ID,
-                'text': message,
-                'parse_mode': None,
-                'disable_web_page_preview': True
-            }
-            response = requests.post(url, data=payload, timeout=10)
+            response = requests.post(url, json=payload, timeout=10)
             return response.status_code == 200
-        except:
+        except Exception as e:
             return False
     
-    def send_last_message(self):
+    def send_last_message(self, bot_token, chat_id):
+        """Send only ONE last message"""
         all_messages = self.get_all_messages_from_all_forms()
+        
         if not all_messages:
             return 0
         
+        # Get only the most recent message
         last_message = all_messages[:1]
-        msg = last_message[0]
-        formatted_msg = self.format_telegram_message(msg, is_old=True)
         
-        if self.send_to_telegram(formatted_msg):
-            self.seen_hashes.add(msg['hash'])
+        sent_count = 0
+        for msg in last_message:
+            formatted_msg = self.format_telegram_message(msg)
+            
+            if self.send_to_telegram(bot_token, chat_id, formatted_msg):
+                sent_count += 1
+                self.seen_hashes.add(msg['hash'])
+            
+            time.sleep(0.5)
         
+        # Mark all messages as seen
         for msg in all_messages:
             self.seen_hashes.add(msg['hash'])
         
-        return 1
+        return sent_count
     
-    def monitor_forever(self):
+    def monitor_all_forms_forever(self, bot_token, chat_id):
+        """Monitor ALL forms continuously"""
+        message_buffer = []
+        
         all_messages = self.get_all_messages_from_all_forms()
         for msg in all_messages:
             self.seen_hashes.add(msg['hash'])
@@ -266,24 +332,36 @@ Panel - Mediatel
         while self.running:
             try:
                 fresh_messages = self.get_all_messages_from_all_forms()
+                
                 if fresh_messages:
                     current_hash = fresh_messages[0]['hash']
+                    
                     if current_hash != last_hash:
                         for msg in fresh_messages:
                             if msg['hash'] not in self.seen_hashes:
                                 self.seen_hashes.add(msg['hash'])
-                                formatted_msg = self.format_telegram_message(msg, is_old=False)
-                                self.send_to_telegram(formatted_msg)
-                        last_hash = current_hash
+                                message_buffer.append(msg)
+                        
+                        if message_buffer:
+                            message_buffer.sort(key=lambda x: x['date_time'])
+                            
+                            for msg in message_buffer:
+                                formatted_msg = self.format_telegram_message(msg)
+                                self.send_to_telegram(bot_token, chat_id, formatted_msg)
+                            
+                            message_buffer.clear()
+                            last_hash = current_hash
+                
                 time.sleep(0.5)
-            except:
-                pass
+                
+            except Exception as e:
+                time.sleep(0.005)
 
-# Start monitoring
+# Start monitoring in background
 portal = SMSPortal(USERNAME, PASSWORD)
 if portal.login():
-    portal.send_last_message()
-    monitor_thread = threading.Thread(target=portal.monitor_forever)
+    portal.send_last_message(BOT_TOKEN, CHAT_ID)
+    monitor_thread = threading.Thread(target=portal.monitor_all_forms_forever, args=(BOT_TOKEN, CHAT_ID))
     monitor_thread.daemon = True
     monitor_thread.start()
 
