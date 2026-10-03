@@ -15,4 +15,4 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         value: 7783590119:AAGScPFVEreH-fvwSQNTuamGlFOGI-VDK7w
       - key: TELEGRAM_CHAT_ID
-        value: -1003481016140
+        value: -1004419198809
